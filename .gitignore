@@ -1,0 +1,5 @@
+**/index.html
+*.pem
+*.key
+*.secret
+*.swp

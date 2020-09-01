@@ -1,0 +1,61 @@
+version: '3'
+
+volumes:
+  onto:
+    driver: local
+  pgdata:
+    driver: local
+services:
+  db: 
+    image: postgres-ontoserver
+    container_name: ontoserver-db
+    build:
+      context: ./postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+  ontoserver:
+    image: aehrc/ontoserver:latest
+    container_name: ontoserver-onto
+    depends_on:
+      - db
+    environment:
+      - ONTOSERVER_INSECURE=true # handled by nginx
+      - ontoserver.security.enabled=true
+      - ontoserver.security.readOnly.fhir=true
+      - ontoserver.security.readOnly.api=false
+      - ontoserver.security.readOnly.synd=false
+      - conformance.security.kinds=Basic,SMART-on-FHIR
+      - conformance.security.description=This server uses OpenID Connect to authorize requests. Read-Only FHIR requests are allowed.
+      - conformance.security.authorize=https://athena.local/auth/realms/ontoserver/protocol/openid-connect/auth
+      - conformance.security.token=https://athena.local/auth/realms/ontoserver/protocol/openid-connect/token
+      - conformance.fhir.base=https://athena.local/ontoserver/fhir
+      - JAVA_OPTS=-Xmx4G
+        # keycloak does not really support symmetric signing keys for JWTs using HS256 (rather, the key can not be extracted), so that RS256 asymmetric crypto is used for key signing. The public key for RS256 can be obtained in the 'Realm Settings' section for the chosen Realm, and then go to "Keys" and copy the Public Key via the button in the RS256 row. Replace the public key in the line below, keeping the markers intact.
+      - ontoserver.security.token.secret=-----BEGIN PUBLIC KEY----- MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAykkoF3Nj3ckuMJjTxLXIWcWg1joYDBPqdv7rygM3RJO1jSAEpwYkLbLJgX+N9ip31dQJOUix74U96blaIgkwy1ebex+QJmLQYhweIoAimYuDwtxYBbWObI+e7TdUB69ec2YW61G8YprG1zlsKdkCkgi3KstveFPMkI9KAoLfc3kLqlw+fdoxJYabu+XdjfS7/v5VFmFWKPJ949myR6OCHVE0777+coBYHD1CCrfcQLJLp2nsp9i1J1g1Bg7NDQPxc5EnAj8NlXjiVolOcU4UQ/aTnbst5ZU2+bzcgQ93RlJ+FWXjzgk0hqdw3467Cvt2SUvgIbiX1oFkyvWcp9hrAwIDAQAB -----END PUBLIC KEY-----
+  keycloak:
+    image: ontoserver-keycloak
+    container_name: ontoserver-keycloak
+    build:
+      context: ./keycloak
+    depends_on:
+      - db
+    environment:
+      - KEYCLOAK_USER_FILE=/opt/secrets/username.secret
+      - KEYCLOAK_PASSWORD_FILE=/opt/secrets/password.secret
+      - DB_VENDOR=postgres
+      - DB_ADDR=db
+      - DB_DATABASE=keycloak
+      - PROXY_ADDRESS_FORWARDING=true # essential for operating behind proxy!
+  nginx:
+    image: ontoserver-nginx
+    container_name: ontoserver-nginx
+    build: 
+      context: ./nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - ontoserver
+      - keycloak
