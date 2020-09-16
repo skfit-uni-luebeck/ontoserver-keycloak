@@ -60,7 +60,7 @@ newline.
 
 > Here is a checklist for the initial start-up:
 
-- [ ] docker hub logged-in
+- [ ] docker hub logged-in with an authorised account
 - [ ] PKI certificate issued from trusted CA, private key placed at
       `nginx/certs/certificate.key`, public key _with the full certification
       chain_ at `nginx/certs/certificate-chain.pem`
