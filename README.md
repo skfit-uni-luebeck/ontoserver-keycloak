@@ -9,10 +9,10 @@ This project demonstrates how to integrate CSIRO's
 Red Hat's [Keycloak](https://keycloak.org), an OpenID Connect-compliant Identity
 and Access Management server.
 
-<mark>This article aims give a comprehensive introduction into the required
-concepts and detailed instructions on how to configure the different components.
-Due to this, actionable instructions are highlighted by this and should show in
-HTML5-compliant browsers.</mark>
+⚠ This article aims give a comprehensive introduction into the required concepts
+and detailed instructions on how to configure the different components. Due to
+this, paragraphs with actionable instructions are highlighted with "⚠" emoji,
+like this one. ⚠
 
 > It is in part quite opinionated, and some opinions or statements may be wrong
 > or insecure, due to the author being new to all of this as well ;) If you spot
@@ -69,7 +69,7 @@ Git, in case you fork this repository, and are excluded using the `.gitignore`.
 These files should only contain the username/password, and optionally a trailing
 newline.
 
-<mark>Here is a checklist for the initial start-up</mark>
+⚠ Here is a checklist for the initial start-up ⚠
 
 - [ ] docker hub logged-in with an authorised account
 - [ ] PKI certificate issued from trusted CA, private key placed at
@@ -80,8 +80,8 @@ newline.
       [noted securely](https://keepass.info/), added to
       `keycloak/username.secret` and `keycloak/password.secret`
 
-<mark>After completing the checklist, you can start the suite of containers for
-the first time:</mark>
+⚠ After completing the checklist, you can start the suite of containers for the
+first time: ⚠
 
 ```
 docker-compose pull && \
@@ -137,12 +137,12 @@ separate user administration from resource access as much as possible. Thus, you
 should add users to the Master realm only if they need to perform management
 tasks in Keycloak itself.
 
-<mark>The first step is thus to create a new Realm for securing access to
+⚠ The first step is thus to create a new Realm for securing access to
 Ontoserver. When logged-in, the current realm will be shown below the Keycloak
 logo in the top-right. When you hover over the "Master" text, a button "Add
 realm" will be shown. Click it, then enter a suitable name for the new realm,
 like "Ontoserver" or your project name if you will secure further applications
-that interact with Ontoserver.</mark>
+that interact with Ontoserver. ⚠
 
 You may want to configure these settings:
 
@@ -164,15 +164,15 @@ privileges within these services, but also control which data from their profile
 they want to share with the application. Whenever you see a "Login with {Google,
 GitHub, Facebook, Apple, etc.}" button, you are interacting with an OIDC client.
 
-<mark>Within your realm, click on "Clients" in the left-hand pane and then
-"Create" in the top-right corner of the table. For the client id, you can chose
-any alphanumeric identifier. It is used in the URLs when requesting tokens. By
+⚠ Within your realm, click on "Clients" in the left-hand pane and then "Create"
+in the top-right corner of the table. For the client id, you can chose any
+alphanumeric identifier. It is used in the URLs when requesting tokens. By
 default, it is also presented to the user if no friendly name is defined in the
 "Name" setting. For the Root URL, you will want to enter the FQDN of the system
 you are setting up, like https://ontoserver.your.domain.com. Choose Open ID
-Connect for the protocol!</mark>
+Connect for the protocol! ⚠
 
-<mark>You will NEED to configure the following settings:</mark>
+⚠ You will NEED to configure the following settings: ⚠
 
 - [ ] _Access Type_
   - whether a secret is required when exchanging an authorization code for an
@@ -234,12 +234,12 @@ that map some attribute of the user principal to claims in the generated tokens.
 For Ontoserver, and probably many other SMART-on-FHIR-compliant applications, we
 will need to make some adjustments to the client scopes already present.
 
-<mark>First-up, we need to add the `system/*.read` and `system/*.write` scopes
-to our realm. In the right-hand pane, click "Client Scopes", then "Create" in
-the top-right. Add the two scopes, exacly as above, including the slash and
+⚠ First-up, we need to add the `system/*.read` and `system/*.write` scopes to
+our realm. In the right-hand pane, click "Client Scopes", then "Create" in the
+top-right. Add the two scopes, exacly as above, including the slash and
 asterisk. If you want, you can also add descriptive texts shown to your users in
 case you want to enable consent. The setting _Include in Token Scope_ must be
-enabled, and the protocol must be _openid_connect_.</mark>
+enabled, and the protocol must be _openid_connect_. ⚠
 
 Contrary to Ontoserver's
 [documentation](https://ontoserver.csiro.au/docs/6/config-security.html), the
@@ -251,13 +251,13 @@ OIDC specification and are used by some features of Keycloak (the
 self-management console available to users, for example!), so remove them at
 your own risk.
 
-<mark>Still, we need to remove some scopes from our Ontoserver client, as the
+⚠ Still, we need to remove some scopes from our Ontoserver client, as the
 associated mappers will confuse Ontoserver. Also, we need to make the new scopes
 available to the client in the first place. Head over to your client, and select
 the "Client Scopes" tab. Remove all _assigned default client scopes_, apart from
 `roles` and all _assigned optional client scopes_. Then add the
 `system/*.{read,write}` and the `onto/{api,synd}.{read,write}` scopes (if added)
-to the default client scopes.</mark>
+to the default client scopes. ⚠
 
 In this way, the scopes will get added into the `scope` claim of every token
 automatically. Optional client scopes will only get added when the
