@@ -264,16 +264,126 @@ automatically. Optional client scopes will only get added when the
 authentication requests includes the desired scopes. Right now, all scopes would
 get added for every user. We will make sure that only users in the correct
 groups/with the correct roles are allowed to use those scopes in the next steps.
-If desired, you could also make some scopes _optional_ if your application
-supports it.
+If desired, you could also make some scopes _optional_ if your application is
+aware of these scopes and will request them when needed.
 
 ![Assigned client scopes](images/02_assigned_clientscopes.png)
 
 ### Roles
 
+Since your use case will likely require different levels of authorization, we
+will need to set-up some roles that users can assume. These roles will then be
+linked to groups (which users belong to, and which can have roles assigned) and
+scopes. They are also (currently, as of Ontoserver 6.0.4) required to get right
+when securing the `/api` and `/synd` endpoints of Ontoserver.
+
+Roles can be defined at the realm level (and thus used by multiple clients) or
+at the client level. The author suggests that the roles for the FHIR endpoint
+(which will be linked to `system/*.{read,write}`) are created as realm roles,
+while the Ontoserver-specific roles are created on the client level.
+
+⚠ Start by adding roles for the FHIR endpoint by clicking on _Roles_ in the
+left-hand pane, then _Add Role_. _You should probably configure one role for
+reading and for writing for all three routes—if users always get access to these
+routes in tandem, use groups instead of assigning multiple scopes to your
+groups_. For the FHIR scopes, the name doesn't technically matter, so using the
+name of the respective scope may be a good idea. After adding them, Keycloak
+will probably throw a 404 error when trying to display the role settings, and
+fail due to the "/\*" in the name. Just go to the home page and select _Roles_
+again, the newly created role will be there. ⚠
+
+> Side note: you will always need to keep URL encoding the scopes for the FHIR
+> endpoint in mind. Other than the 404 when creating the roles, Keycloak doesn't
+> care about the "/\*" as far as I can tell.
+
+⚠ Next, add the client specific roles via Clients -> Ontoserver (or what have
+you) -> Roles -> Add Role. You will need to use the following role names:
+`ROLE_API_READ, ROLE_API_WRITE, ROLE_SYND_READ, ROLE_SYND_WRITE` as they will be
+used for authorization by Ontoserver! ⚠
+
+![Roles on Realm level](images/03a_roles_realm.png)
+![Roles on Client level](images/03b_roles_client.png)
+
 ### Mappers
 
+Mappers determine which user, in which role and in which group, are granted
+which claims, and which claims are added into the generated tokens.
+
+First-up, we want to make sure that only authorized users belonging to the right
+groups are able to claim scopes. This will change the behaviour of the _Assigned
+Default Client Scopes_ you defined above: When you define a _Scope_ mapping for
+a _Client Scope_ (the terminology is a bit ambiguous here!), you restrict the
+assignment of the scope to users having that role. Whenever a user requests a
+token, Keycloak will look at their roles, and the default client scopes, and
+issue a token containing all of the default client scopes that the user is
+authorised to access, based on their role membership. Without those mappings,
+the default client scopes would be added to all tokens, regardless of role
+membership!
+
+⚠ Go to _Client Scopes_, and select the `system/*.read` scope. Then select
+"Scope" in the tab bar and add the `system/*.read` role to the assigned role.
+Repeat this for the `system/*.write` scope.⚠
+
+![Adding realm roles to client scopes](images/04a_scope_ream_role.png)
+
+⚠ If you added the ontoserver-specific clients scopes as well, you will need to
+select the respective roles by selecting your client, as the roles are
+(hopefully?) defined at the client level ⚠
+
+![Adding client-level roles to client scopes](images/04b_scope_client_role.png)
+
+Next, you will need to add a _Mapper_ to the client. This is to support the
+role-based access control (RBAC) that is required for authorizing calls to the
+ontoserver-specific routes. **Again, as of 6.0.x, the documentation is currently
+_incorrect_. Using scopes of the form `onto/{api,synd}.{read,write}` does not
+work and passing the expected roles in the `authorities` claim is required. The
+following mapper will accomplish that based on the roles the current user has.**
+
+⚠ Go to your client and select _Mappers_. Click _Create_. Add an arbitrary name,
+such as `authorities from user client roles`. Make sure to select _User Client
+Role_ as the _Mapper Type_, and select your client id. _Realm Role Prefix_
+should be empty, and _Multivalued_ should be on. Enter `authorities` as the
+_Token Claim Name_ and `String` as the \_Claim JSON type`. Leave the three
+toggles on, so that the claim gets added to all tokens. ⚠
+
+![Authorities From User Client Roles mapper](images/05_mapper_authorities.png)
+
 ### Groups
+
+You will likely have multiple users that perform similar tasks, such as
+administrators, content creators, system users, or general users. To grant those
+users the right to access particular resources, you could directly assign them
+roles. This is error-prone, because many users assume multiple roles. A better
+way is to use _Groups_, which are a collection of roles, for each of the tasks a
+user should carry out. The exact configuration you will create will most likely
+look different to the one described below.
+
+You can nest groups, which will inherit the role mappings of their parent. For
+example, every user that has write access to the syndication API should also
+have read access. You can map the read access in the top-level group and create
+a group as an child of that read-only group.
+
+⚠ Configure some _Groups_ that fit your requirements. Here is a rather technical
+example: ⚠
+
+![Example group configuration](images/06a-user-groups.png)
+
+⚠ Don't forget to configure _Role Mappings_ that map _realm_ and/or _client
+roles_ to the group: ⚠
+
+![Assignment of client roles for a group](images/06b-role-mappings.png)
+
+In the example above, the `{api,fhir,synd}` groups have the respective `read`
+roles granted, while the nested groups additionally have the respective `write`
+roles. Only `ontoserver` has no group mapping.
+
+⚠ You should also configure a default group in which new users are placed. For
+the example above, the likely candidate is `ontoserver/fhir` for read-only
+access on a locked-down server. This setting is especially important if you a)
+allow users to self-register or b) use a federation mechanism like LDAP or an
+external identity provider like Google. ⚠
+
+![Default groups](images/06c-defaultgroups.png)
 
 ### Users
 
