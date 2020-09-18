@@ -148,6 +148,11 @@ You may want to configure these settings:
 
 - in the General tab
   - [ ] the Display name that is shown to users when logging
+  - [ ] the frontend-url that is used when generating URLs that link back to
+        Keycloak, for example in the `.well-known` endpoint configuration. Set
+        this to `https://<your fqdn>/auth` to override the auto-detected value
+        and check whether this is correct using the _OpenID Endpoint
+        Configuration button_ below.
 - in the Login tab
   - [ ] whether users can self-register, use the Forgot password functionality,
         etc.
@@ -187,11 +192,18 @@ Connect for the protocol! ⚠
     JavaScript-based client-side applications, you will need the implicit flow
     enabled.
 - [ ] _Direct Access Grants enabled_
-  - if you have the credentials of the user available, you can enable this
-    setting to exchange this tuple for access tokens. You may want to disable
-    this unless specifically needed, since it is the least secure of the three
-    flows (it is hard to keep a password secret in your application!) If you
-    need to authorize scripts or other server-side applications, use the
+  - if you have the credentials of the user available (i.e. you feature a log-in
+    form directly in your application), you can enable this setting to exchange
+    this tuple for access tokens. This flow corresponds to the "Resource Owner
+    Password Credentials" flow in the OAuth 2.0 specification. You may want to
+    disable this unless specifically needed, since the
+    [OAuth 2.0 specification](https://tools.ietf.org/html/rfc6749#section-1.3.3)
+    states that "_the credentials should only be used when there is a high
+    degree of trust between the resource owner and the client (e.g., the client
+    is part of the device operating system or a highly privileged application),
+    and when other authorization grant types are not available (such as an
+    authorization code)_". If you need to authorize scripts or other server-side
+    applications, use the
     [_Service Accounts enabled_ setting instead](https://www.keycloak.org/docs/latest/server_admin/#_service_accounts)
 - [ ] _Root URL_
   - see above, where the service that is being secured is available, e.g.
@@ -204,8 +216,9 @@ Connect for the protocol! ⚠
     however, wildcards are allowed (only at the end, however). If your frontend
     client is at https://ontoserver.your.domain.com/onto_client, you will enter
     something like `/onto-client/oidc_redirect_uri`. You may also want to add
-    callbacks for tools like [Postman, ](https://oauth.pstmn.io/v1/callback) or
-    [OIDC Debugger](https://oidcdebugger.com/debug)
+    callbacks (temporarily) for tools like Postman
+    (https://oauth.pstmn.io/v1/callback) or OIDC Debugger
+    (https://oidcdebugger.com/debug)
 - [ ] _Base URL_
   - The (probably relative) URL Keycloak should use when redirecting to the
     client, `/fhir/metadata` is a good choice here.
@@ -381,18 +394,153 @@ roles. Only `ontoserver` has no group mapping.
 the example above, the likely candidate is `ontoserver/fhir` for read-only
 access on a locked-down server. This setting is especially important if you a)
 allow users to self-register or b) use a federation mechanism like LDAP or an
-external identity provider like Google. ⚠
+external identity provider like Google, GitHub and the like. ⚠
 
 ![Default groups](images/06c-defaultgroups.png)
 
 ### Users
 
+Next-up, you will need some users in your new installation. Since we added a
+default group, every user will at least have some access to Ontoserver.
+
+By default, Keycloak doesn't show any users on the _Users_ page, even if there
+are some configured. This is
+[by design](https://www.keycloak.org/docs/latest/server_admin/#user-management)!
+You can either search for users or click the _View all users_ next to the search
+box (this will list all users in your LDAP if configured).
+
+⚠ Create some users for your realm. The only required parameter when manually
+creating users is the username. If required, add some
+[_Required User Actions_](https://www.keycloak.org/docs/latest/server_admin/#required-actions)
+the user will have to perform when logging in the next time. You can also set a
+password yourself in the _Credentials_ tab. If you enable _Temporary_, it needs
+to be changed when the user next logs-in! You will also need to configure access
+to some groups. ⚠
+
+![User Details page](images/07a_user_details.png)
+![User Credentials](images/07b_user_credentials.png)
+![User Group assignment](images/07c_user_groups.png)
+
+You can evaluate which roles a user has on the _Role Mappings_ page. This will
+show all realm- and client-level roles (for one selected client):
+
+![User Role Mapping evaluation](images/07d_user_rolemappings.png)
+
+This concludes the required steps for configuring Keycloak for use with
+Ontoserver. Next up, you may configure some further options for Keycloak, before
+setting up Ontoserver itself.
+
+### Optional further steps
+
+You may want to set-up federation of users with LDAP or Kerberos or the option
+to register with external identity providers like Google, GitHub, or any other
+OAuth2- or SAML-compatible solution. Refer to Keycloak's documentation
+[on federation](https://www.keycloak.org/docs/latest/server_admin/index.html#_user-storage-federation)
+and
+[identity brokering](https://www.keycloak.org/docs/latest/server_admin/index.html#_identity_broker)
+for further details on how to do this.
+
+You may also need to configure further users in your Master realm that have
+access to the administration console, as documented
+[here](https://www.keycloak.org/docs/latest/server_admin/index.html#_admin_permissions).
+
+For especially sensitive applications, you can also require Two-Factor
+Authentication (2FA), password policies or WebAuthn hardware-based 2FA, see
+[the docs for this](https://www.keycloak.org/docs/latest/server_admin/#authentication).
+
+### Pre-fabricated Realm
+
+The realm that was created during the writing of this guide was exported and
+[made available in this repository](ontoserver-realm-export.json). You can
+import this realm when clicking the "New realm" button. This will set-up a realm
+`Ontoserver` featuring the roles, client scopes, clients, groups and mappings
+shown in the screen-shots. The realm was exported on 2020-09-18 and will be kept
+up-to-date along with the guide.
+
 ## Ontoserver Configuration
 
-- [ ] RS256 key
-- [ ] conformance.security.enabled
-- [ ] conformance.security.readonly.\*
-- [ ] conformance.security.kinds
-- [ ] conformance.security.{authorize, token}
+After configuring the realm, we will need to make sure that Ontoserver is
+configured in the configuration we require and trusts the tokens produced by
+Keycloak.
+
+Open the `docker-compose.yml` file in your copy of this repository in your
+favourite text editor.
+
+You will need to change several settings in the `environment` section of the
+`ontoserver` service.
+
+⚠ First, set the `conformance.fhir.base` to the public URL of your installation.
+This path should be reachable/resolvable from the server itself! ⚠
+
+⚠ Next, you will need to decide which routes should be available read-only
+without authentication. This is determined by
+`ontoserver.security.readOnly.{api,fhir,synd}`. In the provided configuration,
+all three routes are locked-down and only `fhir/metadata` can be accessed
+without authorization. ⚠
+
+You can also adjust the `conformance.security.description` to explain (to
+humans) how the security of your installation works.
+
+⚠ You will need to adjust the URL of the authorization and token services to
+your installation, these are the `conformance.security.{authorize,token}`
+settings. They will be of the form
+`https://<your FQDN>/auth/realms/<your realm name>/protocol/openid-connect/{authorize,token}`.
+You can view the correct settings in the "OpenID Endpoint Configuration" in the
+_Realm Settings_ section. ⚠
+
+⚠ One of the most important settings to get right is the
+`ontoserver.security.token.secret` configuration. This is used to verify the
+signatures of the JSON Web Tokens presented to Ontoserver when making
+authenticated calls. If it is not set correctly, the token will be rejected! To
+configure this, go to the _Realm Settings_, select the _Keys_ tab, and click the
+_Public Key_ button in the RS256 row. Copy the entire string to the clipboard
+and paste it over the pre-defined key. Keep the markers intact! ⚠
+
+![Public Key in Keycloak](images/08_rs256_pubkey.png)
+
+The setting should look like this, with leading and trailing markers. Every
+marker has 5 leading and trailing dashes. You can include newlines before/after
+the markers. Whitespace is ignored (outside of the key itself, at least), so you
+can use auto-formatting features in your text editor safely without messing up
+the setting:
+
+```
+- ontoserver.security.token.secret=-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApeS3BVDSzwmrKZqcQoTR8bZoaTcyFovmgDsRYclvbnJ10Jw7gM6epUenDyXuW3x0EZjkvA12SsvcPp1mLnY1qaLMb/4gLAWUgbjUif9wcWzQHe4SqzWMKHZAalszGkB9x045kYdFfLdVMAh1UQsB9CZFUEeKtR4GD85bllZQAG/NsDlCjNH119RS+qQUwB2eQiVcVDgkVCovbzB8olbdFw11s8/I1r/ZGGvEhxthHfqvX1o7JbXfqHu7lgQu+FE9f820ySXBQwJOnDR4MOsGJl2eT8t2cH4aqUxH/qO/a9oMl/3eu0ezkUq+L5cgYRJ4frvDlVoIZ4284aJSAPwdpwIDAQAB
+-----END PUBLIC KEY-----
+```
+
+> Note that the [docs](https://ontoserver.csiro.au/docs/6/config-security.html)
+> state the following regarding the secret: _When configuring Ontoserver to work
+> with an authorization server, this parameter should be the shared key (using
+> HS256 shared secret/symmetric key). Since version 5.5 of Ontoserver, an
+> asymmetric (RS256 public-private) key is supported, although not recommended
+> due to potential performance degradation_. As far as I am aware, it is not
+> possible to define a HS256 key for token signing, and in
+> [fact only really supports RSA-based (asymmetric) key signing](https://lists.jboss.org/pipermail/keycloak-user/2017-May/010809.html),
+> where a Red Hed employee states that HMAC-based signing would be a potential
+> vulnerability if the shared symmetric key is leaked to an attacker. In such a
+> scenario, the attacker could generate their own valid tokens, bypassing the
+> Keycloak server entirely!
 
 ## Testing the infrastructure
+
+With everything in place, you can restart your ensemble of servers.
+
+You can test authentication using [Postman](https://getpostman.io) with this
+collection
+
+[![Run in Postman](https://run.pstmn.io/button.svg)](CHANGE ME)
+
+The Postman [collection](Ontoserver-Keycloak.postman_collection.json) and
+[environment](localhost.postman_environment.json) is also provided in this repo.
+
+If required, change the included _environment_ to suit your needs:
+
+![Postman environment settings](images/09a_postman_environment.png)
+
+You can use the `fhir Metadata` request to view the metadata, which is possible
+in all configurations. You should now request a token:
+
+![Request Token, step 1](images/09b_request_token_step1.png)
+![Request Token, step 2](images/09b_request_token_step2_standard_flow.png)

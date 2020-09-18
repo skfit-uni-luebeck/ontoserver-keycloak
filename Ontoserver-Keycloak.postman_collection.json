@@ -1,0 +1,180 @@
+{
+	"info": {
+		"_postman_id": "ca0818ec-a144-4c17-8cae-55a8f5cd8d6a",
+		"name": "Ontoserver-Keycloak",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "with auth (set on the folder level)",
+			"item": [
+				{
+					"name": "upstream feed",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{onto}}/api/upstream.xml",
+							"host": [
+								"{{onto}}"
+							],
+							"path": [
+								"api",
+								"upstream.xml"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "syndication feed",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{onto}}/synd/syndication.xml",
+							"host": [
+								"{{onto}}"
+							],
+							"path": [
+								"synd",
+								"syndication.xml"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "CodeSystem",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{onto}}/fhir/CodeSystem",
+							"host": [
+								"{{onto}}"
+							],
+							"path": [
+								"fhir",
+								"CodeSystem"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "create CodeSystem",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"resourceType\": \"CodeSystem\",\r\n  \"id\": \"example\",\r\n  \"meta\": {\r\n    \"profile\": [\r\n      \"http://hl7.org/fhir/StructureDefinition/shareablecodesystem\"\r\n    ]\r\n  },\r\n  \"text\": {\r\n    \"status\": \"generated\",\r\n    \"div\": \"<div xmlns=\\\"http://www.w3.org/1999/xhtml\\\">\\n      <p>CodeSystem &quot;ACME Codes for Cholesterol&quot;: This is an example code system that includes \\n        all the codes for serum cholesterol defined by ACME inc.</p>\\n      <p>Developed by: FHIR project team (example)</p>\\n      <p>Published for testing on 28-Jan 2016</p>\\n      <p>This code system defines all the ACME codes for serum cholesterol:</p>\\n      <table class=\\\"grid\\\">\\n        <tr>\\n          <td>\\n            <b>Code</b>\\n          </td>\\n          <td>\\n            <b>Display</b>\\n          </td>\\n          <td>\\n            <b>Definition</b>\\n          </td>\\n        </tr>\\n        <tr>\\n          <td>chol-mmol</td>\\n          <td>SChol (mmol/L)</td>\\n          <td>Serum Cholesterol, in mmol/L</td>\\n        </tr>\\n        <tr>\\n          <td>chol-mass</td>\\n          <td>SChol (mg/L)</td>\\n          <td>Serum Cholesterol, in mg/L</td>\\n        </tr>\\n        <tr>\\n          <td>chol</td>\\n          <td>SChol</td>\\n          <td>Serum Cholesterol</td>\\n        </tr>\\n      </table>\\n    </div>\"\r\n  },\r\n  \"url\": \"http://hl7.org/fhir/CodeSystem/example\",\r\n  \"identifier\": [\r\n    {\r\n      \"system\": \"http://acme.com/identifiers/codesystems\",\r\n      \"value\": \"internal-cholesterol-inl\"\r\n    }\r\n  ],\r\n  \"version\": \"20160128\",\r\n  \"name\": \"ACMECholCodesBlood\",\r\n  \"title\": \"ACME Codes for Cholesterol in Serum/Plasma\",\r\n  \"status\": \"draft\",\r\n  \"experimental\": true,\r\n  \"date\": \"2016-01-28\",\r\n  \"publisher\": \"Acme Co\",\r\n  \"contact\": [\r\n    {\r\n      \"name\": \"FHIR project team\",\r\n      \"telecom\": [\r\n        {\r\n          \"system\": \"url\",\r\n          \"value\": \"http://hl7.org/fhir\"\r\n        }\r\n      ]\r\n    }\r\n  ],\r\n  \"description\": \"This is an example code system that includes all the ACME codes for serum/plasma cholesterol from v2.36.\",\r\n  \"caseSensitive\": true,\r\n  \"content\": \"complete\",\r\n  \"filter\": [\r\n    {\r\n      \"code\": \"acme-plasma\",\r\n      \"description\": \"An internal filter used to select codes that are only used with plasma\",\r\n      \"operator\": [\r\n        \"=\"\r\n      ],\r\n      \"value\": \"the value of this filter is either 'true' or 'false'\"\r\n    }\r\n  ],\r\n  \"concept\": [\r\n    {\r\n      \"code\": \"chol-mmol\",\r\n      \"display\": \"SChol (mmol/L)\",\r\n      \"definition\": \"Serum Cholesterol, in mmol/L\",\r\n      \"designation\": [\r\n        {\r\n          \"use\": {\r\n            \"system\": \"http://acme.com/config/fhir/codesystems/internal\",\r\n            \"code\": \"internal-label\"\r\n          },\r\n          \"value\": \"From ACME POC Testing\"\r\n        }\r\n      ]\r\n    },\r\n    {\r\n      \"code\": \"chol-mass\",\r\n      \"display\": \"SChol (mg/L)\",\r\n      \"definition\": \"Serum Cholesterol, in mg/L\",\r\n      \"designation\": [\r\n        {\r\n          \"use\": {\r\n            \"system\": \"http://acme.com/config/fhir/codesystems/internal\",\r\n            \"code\": \"internal-label\"\r\n          },\r\n          \"value\": \"From Paragon Labs\"\r\n        }\r\n      ]\r\n    },\r\n    {\r\n      \"code\": \"chol\",\r\n      \"display\": \"SChol\",\r\n      \"definition\": \"Serum Cholesterol\",\r\n      \"designation\": [\r\n        {\r\n          \"use\": {\r\n            \"system\": \"http://acme.com/config/fhir/codesystems/internal\",\r\n            \"code\": \"internal-label\"\r\n          },\r\n          \"value\": \"Obdurate Labs uses this with both kinds of units...\"\r\n        }\r\n      ]\r\n    }\r\n  ]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{onto}}/fhir/CodeSystem/example",
+							"host": [
+								"{{onto}}"
+							],
+							"path": [
+								"fhir",
+								"CodeSystem",
+								"example"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"auth": {
+				"type": "oauth2",
+				"oauth2": [
+					{
+						"key": "accessToken",
+						"value": "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJpaXUyQXJhbG9PampjR29mRmdpNEJ1dXFkTURGaXFOU09sN1FpM1RGXzJFIn0.eyJleHAiOjE1OTkxMzY4MTgsImlhdCI6MTU5OTEzNTkxOCwiYXV0aF90aW1lIjoxNTk5MTM1OTE4LCJqdGkiOiIxZjE5YTg5YS1mOWMyLTQ1ODctYWJjNC01YmNmM2Q4NmIzZjciLCJpc3MiOiJodHRwczovL2F0aGVuYS5sb2NhbC9hdXRoL3JlYWxtcy9vbnRvc2VydmVyIiwic3ViIjoiZGRjY2UxODQtYWVjNy00YjUyLWIwMDgtZjFjYTBjMzY4MDY2IiwidHlwIjoiQmVhcmVyIiwiYXpwIjoib250b3NlcnZlciIsIm5vbmNlIjoieGM0emNyaWdnZ28iLCJzZXNzaW9uX3N0YXRlIjoiZTczM2ZlMjgtNjYyNi00OTQwLTkxNDMtYjRhNTllZWVhM2JhIiwiYWNyIjoiMSIsInNjb3BlIjoib3BlbmlkIFNDT1BFX29udG8vc3luZC53cml0ZSBzeXN0ZW0vKi53cml0ZSBzeXN0ZW0vKi5yZWFkIFNDT1BFX29udG8vc3luZC5yZWFkIFNDT1BFX29udG8vYXBpLndyaXRlIFNDT1BFX29udG8vYXBpLnJlYWQiLCJhdXRob3JpdGllcyI6WyJST0xFX0FQSV9SRUFEIiwiUk9MRV9TWU5EX1JFQUQiLCJST0xFX0FQSV9XUklURSIsIlJPTEVfU1lORF9XUklURSJdfQ.MlSCjZrmVhZCCxxqxSzeHPF9827PR1x8nlsHIilGzxUkOiTcEmlifhOvC1EPoEolMo4lZxVTa82lLOIggVhYl__xQj7ZZZu_x37Lrb-tCqoasbe06C4sV0sWQRovst_kR7-zlPBQ1SC58k4wUA_Jjp-RIaVm6tZlGnkqcZqwfKB3JuEMlBGixJTLSql5JnMJkWbGTXGbx-FGNpxxHvn6RiOk70BpSkqTk6Ve6tsq2rLMNibjiBv4dHnZ5_saK6rJj09X2o2zKxClzPsxicMAgLVtAe70Iq3J38spDxv3XFK7CIeC05fCA2myE4E1uvNRN5zmXfjJIzQP5FKYZpZMsA",
+						"type": "string"
+					},
+					{
+						"key": "tokenType",
+						"value": "bearer",
+						"type": "string"
+					},
+					{
+						"key": "addTokenTo",
+						"value": "header",
+						"type": "string"
+					}
+				]
+			},
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"id": "e7841f42-46bf-4f6c-9ff9-99327ba643fe",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"id": "fa1cbd6b-5241-4633-97d3-15afc26569c6",
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			],
+			"protocolProfileBehavior": {}
+		},
+		{
+			"name": "fhir Metadata",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{onto}}/fhir/metadata",
+					"host": [
+						"{{onto}}"
+					],
+					"path": [
+						"fhir",
+						"metadata"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "b9a7e866-7965-44cf-b111-d0b2a0b46b46",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "cec13fc6-14cc-44a8-ad6e-cf173d5cf2e0",
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"protocolProfileBehavior": {}
+}

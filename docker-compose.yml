@@ -21,26 +21,33 @@ services:
     depends_on:
       - db
     environment:
-      - ONTOSERVER_INSECURE=true # handled by nginx
+      # TLS is handled by nginx
+      - ONTOSERVER_INSECURE=true
+      # what is the FHIR base url of your Ontoserver? Used to generate links and is featured in the conformance statement
+      - conformance.fhir.base=https://athena.local/fhir # <== CHANGE THIS SETTING
+      # enables the OAuth sub-system, required
       - ontoserver.security.enabled=true
-      - ontoserver.security.readOnly.fhir=false
-      - ontoserver.security.readOnly.api=false
-      - ontoserver.security.readOnly.synd=false
+      # is read-only access to FHIR allowed? if false, only /fhir/metadata is allowed without authentication
+      - ontoserver.security.readOnly.fhir=false # change?
+      - ontoserver.security.readOnly.api=false # change?
+      - ontoserver.security.readOnly.synd=false # change?
+      # can also be Basic, but the documentation does not state how Basic credentials are verified
       - conformance.security.kinds=SMART-on-FHIR
+      # this is the text that displays in the conformance statement
       - conformance.security.description=This server uses OpenID Connect to
         authorize requests. Read-Only FHIR requests are NOT allowed.
+      # this is featured in the machine-readable ConformanceStatement and should point to the "authorize" url of your keycloak installation
       - conformance.security.authorize=https://athena.local/auth/realms/ontoserver/protocol/openid-connect/auth #<== CHANGE THIS SETTING
+      # dito, point to your token endpoit
       - conformance.security.token=https://athena.local/auth/realms/ontoserver/protocol/openid-connect/token # <== CHANGE THIS SETTING
-      - conformance.fhir.base=https://athena.local/fhir # <== CHANGE THIS SETTING
-      - JAVA_OPTS=-Xmx4G
         # keycloak does not really support symmetric signing keys for JWTs using HS256 (rather, the key can not be extracted),
         # so that RS256 asymmetric crypto is used for key signing. The public key for RS256 can be obtained in the 'Realm Settings'
         # section for the chosen Realm, and then go to "Keys" and copy the Public Key via the button in the RS256 row.
         # Replace the public key in the line below, keeping the markers intact (with 5 leading and trailing dashes!).
-        # CHANGE THIS SETTING
       - ontoserver.security.token.secret=-----BEGIN PUBLIC KEY-----
         MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApeS3BVDSzwmrKZqcQoTR8bZoaTcyFovmgDsRYclvbnJ10Jw7gM6epUenDyXuW3x0EZjkvA12SsvcPp1mLnY1qaLMb/4gLAWUgbjUif9wcWzQHe4SqzWMKHZAalszGkB9x045kYdFfLdVMAh1UQsB9CZFUEeKtR4GD85bllZQAG/NsDlCjNH119RS+qQUwB2eQiVcVDgkVCovbzB8olbdFw11s8/I1r/ZGGvEhxthHfqvX1o7JbXfqHu7lgQu+FE9f820ySXBQwJOnDR4MOsGJl2eT8t2cH4aqUxH/qO/a9oMl/3eu0ezkUq+L5cgYRJ4frvDlVoIZ4284aJSAPwdpwIDAQAB
-        -----END PUBLIC KEY-----
+        -----END PUBLIC KEY----- # CHANGE THIS SETTING
+      - JAVA_OPTS=-Xmx4G # 2G mimimum, 8G optimum
   keycloak:
     image: ontoserver-keycloak
     container_name: ontoserver-keycloak
