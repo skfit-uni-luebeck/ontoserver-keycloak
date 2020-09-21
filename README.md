@@ -104,12 +104,77 @@ with the FQDN of your machine if required):
 You will now be able to set up Keycloak to provide the authentication service
 required.
 
-## Understanding OpenID Connect
+## Understanding OpenID Connect & Further Reading
 
-TODO
+OAuth 2.0 is the protocol that powers authorization across the internet.
+Whenever you see a button "Sign-in with Google/Apple/GitHub", you are looking at
+OAuth 2.0. It is designed to be user-centric and browser-friendly. It is
+specified in [RFC 6749](https://tools.ietf.org/html/rfc6749) and
+[RFC 6750](https://tools.ietf.org/html/rfc6750). OpenID Connect is a layer on
+top of OAuth which adds _Identity_ (i.e. authentication) to the protocol.
 
-Flow explanation:
-https://www.keycloak.org/docs/latest/server_admin/#_oidc-auth-flows
+The core of OAuth is naturally an authorization server. This server maps user
+identities to access rights and issues verifiable tokens in the JSON Web Token
+(JWT) format specified in [RFC 7519](https://tools.ietf.org/html/rfc7519).
+
+While OAuth 2.0 is an authorization service, it does not allow for verifying the
+identity of the end user. This is what OpenID Connect addresses. More
+information is available at https://openid.net/connect/.
+
+Because OAuth 2.0 and OpenID Connect are robust, secure, and widely-used
+protocols, the [SMART-on-FHIR specification](https://docs.smarthealthit.org/),
+used for integrating personal healthcare apps with each other. A great
+introduction is also available at
+https://smilecdr.com/docs/security/smart_on_fhir_introduction.html. Strictly
+speaking, the security system of Ontoserver seems to be not entirely compliant
+with the SMART-on-FHIR subspecification,
+[SMART Backend Services: Authorization Guide](https://hl7.org/fhir/uv/bulkdata/authorization/index.html).
+Still, many concepts apply.
+
+> The SMART-on-FHIR specifications calls for callers of backend services
+> dynamically register with the authorization server and present a signed access
+> token when requesting authorization codes. This is not supported by
+> Ontoserver.
+
+Regardless, the current security model of Ontoserver requires that requests to
+secure endpoints present a valid Bearer token in JWT format, issued and
+cryptographically signed by a trusted authorization server, to grant access.
+
+Because OpenID Connect is a modern protocol, the tokens are obtained using HTTP
+GET and POST operations. The specification supports multiple _flows_ that define
+how such a token can be obtained. The issued tokens will contain _claims_ that
+are interpreted by the receiving server to grant or deny access to resources.
+
+The primary means that clients should support is the _Direct_ flow,
+[specified here](https://openid.net/specs/openid-connect-core-1_0.html#CodeFlowAuth).
+This flow relies on an short-lived _authorization code_ that is issued by the
+authorization server upon a GET request to the authorization endpoint of the
+authorization server. The request for the authorization code is validated by the
+authorization server, and the end-user is authenticated. If allowed, the
+authorization server will perform a `302 Found` redirection to the specified
+callback URL, with a parameter for the authorization code. This authorization
+code can then be exchanged for the authorization token using a POST request.
+This is done so that the authorization tokens are transmitted only in the HTTP
+body, not in the header or URL fragments. When exchanging codes for tokens, the
+client presents a credential that authenticates the client to the authorization
+server, along with the code. This flow is illustrated in the following image.
+
+![Standard OAuth 2.0 flow, from https://developer.okta.com/blog/2019/08/22/okta-authjs-pkce](images/external/standard_flow_developer_okta.svg)
+
+Because it is not possible to store a credential in some clients (such as modern
+Single-Page Applications that don't have a backend service), the flow as
+described above is not practical for such clients. Historically, the
+[Implicit flow was used instead](https://openid.net/specs/openid-connect-core-1_0.html#ImplicitFlowAuth),
+but this flow is not recommended any more because it
+**[will leak tokens in URL fragments](https://tools.ietf.org/html/draft-ietf-oauth-security-topics-15#section-2.1.2)**,
+which are visible in the browser history and can be extracted by malicious
+browser extensions. Hence,
+**[you should NOT use this flow](https://developer.okta.com/blog/2019/08/22/okta-authjs-pkce)**.
+
+Instead, use the standard flow with the PKCE extension, specified in
+[RFC 7636](https://tools.ietf.org/html/rfc7636).
+
+<!-- TODO continue here -->
 
 ## Keycloak Configuration
 
@@ -147,7 +212,7 @@ that interact with Ontoserver. ⚠
 You may want to configure these settings:
 
 - in the General tab
-  - [ ] the Display name that is shown to users when logging
+  - [ ] the Display name that is shown to users when logging in
   - [ ] the frontend-url that is used when generating URLs that link back to
         Keycloak, for example in the `.well-known` endpoint configuration. Set
         this to `https://<your fqdn>/auth` to override the auto-detected value
@@ -186,17 +251,22 @@ Connect for the protocol! ⚠
     outlined above, you will be able to use this flow if your client is able to
     "keep a secret" from the user. If your authorization flow happens
     server-side (Node, Java, ASP.NET etc.) this will likely be the case.
-    Otherwise, you will need to use the Implicit flow.
+    Otherwise, you will need to either use the Implicit flow
+    [(not recommended!)](https://tools.ietf.org/html/draft-ietf-oauth-security-topics-15#section-2.1.2)
+    or support the standard flow with PKCE enabled in your client!.
 - [ ] _Implicit Flow enabled_
   - If you plan on authorising applications that can't keep a secret, like
-    JavaScript-based client-side applications, you will need the implicit flow
-    enabled.
+    JavaScript-based client-side applications, you may need the implicit flow
+    enabled. This flow is
+    [not recommended due to security concerns!](https://tools.ietf.org/html/draft-ietf-oauth-security-topics-15#section-2.1.2).
+    You should instead use the Standard flow with _Proof Key for Code Exchange_.
 - [ ] _Direct Access Grants enabled_
   - if you have the credentials of the user available (i.e. you feature a log-in
-    form directly in your application), you can enable this setting to exchange
-    this tuple for access tokens. This flow corresponds to the "Resource Owner
-    Password Credentials" flow in the OAuth 2.0 specification. You may want to
-    disable this unless specifically needed, since the
+    form directly in your application, or you reuse credentials across clients,
+    BAD!), you can enable this setting to exchange this tuple for access tokens.
+    This flow corresponds to the "Resource Owner Password Credentials" flow in
+    the OAuth 2.0 specification. You MUST disable this unless specifically
+    needed, since the
     [OAuth 2.0 specification](https://tools.ietf.org/html/rfc6749#section-1.3.3)
     states that "_the credentials should only be used when there is a high
     degree of trust between the resource owner and the client (e.g., the client
@@ -224,6 +294,8 @@ Connect for the protocol! ⚠
     client, `/fhir/metadata` is a good choice here.
 - [ ] _Admin URL_
   - This setting is used when using a Keycloak-specific adapter. Leave it blank.
+- [ ] _Advanced Settings_ -> _Proof Key for Code Exchange Code Challenge Method_
+  - use the S256 challenge method for PKCE.
 
 If you select _confidential_ authorization, you will find the secret required in
 the "Credentials" tab.
@@ -258,19 +330,18 @@ Contrary to Ontoserver's
 [documentation](https://ontoserver.csiro.au/docs/6/config-security.html), the
 scopes `onto/{api,synd}.{read,write}` are currently broken. This will likely be
 fixed in the upcoming 6.1.x series, in which case this article will be updated
-accordingly. Feel free to add the four scopes anyway. You can leave the _Defaut
-Client Scopes_ and the already-present as-is. Some of these are mandated by the
-OIDC specification and are used by some features of Keycloak (the
-self-management console available to users, for example!), so remove them at
-your own risk.
+accordingly. Feel free to add the four scopes anyway. You can leave the _Default
+Client Scopes_ and the already-present scopes as-is. Some of these are mandated
+by the OIDC specification and are used by some features of Keycloak within your
+Realm (the self-management console available to users, for example!), so remove
+them at your own risk.
 
 ⚠ Still, we need to remove some scopes from our Ontoserver client, as the
 associated mappers will confuse Ontoserver. Also, we need to make the new scopes
 available to the client in the first place. Head over to your client, and select
-the "Client Scopes" tab. Remove all _assigned default client scopes_, apart from
-`roles` and all _assigned optional client scopes_. Then add the
-`system/*.{read,write}` and the `onto/{api,synd}.{read,write}` scopes (if added)
-to the default client scopes. ⚠
+the "Client Scopes" tab. Remove all _assigned default client scopes_ and all
+_assigned optional client scopes_. Then add the `system/*.{read,write}` and the
+`onto/{api,synd}.{read,write}` scopes (if added) to the default client scopes. ⚠
 
 In this way, the scopes will get added into the `scope` claim of every token
 automatically. Optional client scopes will only get added when the
@@ -309,8 +380,8 @@ again, the newly created role will be there. ⚠
 > endpoint in mind. Other than the 404 when creating the roles, Keycloak doesn't
 > care about the "/\*" as far as I can tell.
 
-⚠ Next, add the client specific roles via Clients -> Ontoserver (or what have
-you) -> Roles -> Add Role. You will need to use the following role names:
+⚠ Next, add the **client specific roles** via Clients -> Ontoserver (or what
+have you) -> Roles -> Add Role. You will need to use the following role names:
 `ROLE_API_READ, ROLE_API_WRITE, ROLE_SYND_READ, ROLE_SYND_WRITE` as they will be
 used for authorization by Ontoserver! ⚠
 
@@ -356,8 +427,8 @@ following mapper will accomplish that based on the roles the current user has.**
 such as `authorities from user client roles`. Make sure to select _User Client
 Role_ as the _Mapper Type_, and select your client id. _Realm Role Prefix_
 should be empty, and _Multivalued_ should be on. Enter `authorities` as the
-_Token Claim Name_ and `String` as the \_Claim JSON type`. Leave the three
-toggles on, so that the claim gets added to all tokens. ⚠
+_Token Claim Name_ and `String` as the \_Claim JSON type` (not JSON!). Leave the
+three toggles on, so that the claim gets added to all tokens. ⚠
 
 ![Authorities From User Client Roles mapper](images/05_mapper_authorities.png)
 
@@ -390,17 +461,18 @@ In the example above, the `{api,fhir,synd}` groups have the respective `read`
 roles granted, while the nested groups additionally have the respective `write`
 roles. Only `ontoserver` has no group mapping.
 
-⚠ You should also configure a default group in which new users are placed. For
-the example above, the likely candidate is `ontoserver/fhir` for read-only
-access on a locked-down server. This setting is especially important if you a)
-allow users to self-register or b) use a federation mechanism like LDAP or an
-external identity provider like Google, GitHub and the like. ⚠
+⚠ You should also configure at least one default group in which new users are
+placed. For the example above, the likely candidate is `ontoserver/fhir` for
+read-only access on a locked-down server. This setting is especially important
+if you a) allow users to self-register or b) use a federation mechanism like
+LDAP or an external identity provider like Google, GitHub and the like. ⚠
 
 ![Default groups](images/06c-defaultgroups.png)
 
 ### Users
 
-Next-up, you will need some users in your new installation. Since we added a
+Next-up, you will need some users in your new installation (if you don't plan on
+setting up an external IDP or LDAP/Kerberos federation). Since we added a
 default group, every user will at least have some access to Ontoserver.
 
 By default, Keycloak doesn't show any users on the _Users_ page, even if there
@@ -485,8 +557,8 @@ humans) how the security of your installation works.
 your installation, these are the `conformance.security.{authorize,token}`
 settings. They will be of the form
 `https://<your FQDN>/auth/realms/<your realm name>/protocol/openid-connect/{authorize,token}`.
-You can view the correct settings in the "OpenID Endpoint Configuration" in the
-_Realm Settings_ section. ⚠
+You can view the correct settings in the "OpenID Endpoint Configuration" JSON
+document in the _Realm Settings_ section. ⚠
 
 ⚠ One of the most important settings to get right is the
 `ontoserver.security.token.secret` configuration. This is used to verify the
@@ -527,10 +599,9 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApeS3BVDSzwmrKZqcQoTR8bZoaTcyFovmgDsR
 
 With everything in place, you can restart your ensemble of servers.
 
+[![Run in Postman](https://run.pstmn.io/button.svg)](https://app.getpostman.com/run-collection/d38ff2a2c4bfbebf5f4f#?env%5Blocalhost%5D=W3sia2V5Ijoib250byIsInZhbHVlIjoiaHR0cHM6Ly9sb2NhbGhvc3QvIiwiZW5hYmxlZCI6dHJ1ZX0seyJrZXkiOiJrZXljbG9hayIsInZhbHVlIjoiaHR0cHM6Ly9sb2NhbGhvc3QvYXV0aCIsImVuYWJsZWQiOnRydWV9LHsia2V5IjoicmVhbG0iLCJ2YWx1ZSI6Im9udG9zZXJ2ZXIiLCJlbmFibGVkIjp0cnVlfSx7ImtleSI6ImNsaWVudF9pZCIsInZhbHVlIjoib250b3NlcnZlciIsImVuYWJsZWQiOnRydWV9LHsia2V5IjoiY2xpZW50X3NlY3JldCIsInZhbHVlIjoiIiwiZW5hYmxlZCI6dHJ1ZX0seyJrZXkiOiJhdXRoX2NhbGxiYWNrIiwidmFsdWUiOiJodHRwczovL2xvY2FsaG9zdC9hdXRoLWNhbGxiYWNrIiwiZW5hYmxlZCI6dHJ1ZX0seyJrZXkiOiJ0b2tlbiIsInZhbHVlIjoiIiwiZW5hYmxlZCI6dHJ1ZX1d)
 You can test authentication using [Postman](https://getpostman.io) with this
-collection
-
-[![Run in Postman](https://run.pstmn.io/button.svg)](CHANGE ME)
+collection.
 
 The Postman [collection](Ontoserver-Keycloak.postman_collection.json) and
 [environment](localhost.postman_environment.json) is also provided in this repo.
@@ -543,4 +614,94 @@ You can use the `fhir Metadata` request to view the metadata, which is possible
 in all configurations. You should now request a token:
 
 ![Request Token, step 1](images/09b_request_token_step1.png)
-![Request Token, step 2](images/09b_request_token_step2_standard_flow.png)
+![Request Token, step 2](images/09b_request_token_step2_standard_flow_pkce.png)
+
+Weirdly, it is not possible to pass a `nonce` (number only used once) for
+implicit requests. For the OpenID Connect's implicit flow, this parameter is
+required
+[as per the specification](https://openid.net/specs/openid-connect-implicit-1_0.html#RequestParameters),
+so that Keycloak rejects the request. Since
+[this flow is not recommended anyway](https://tools.ietf.org/html/draft-ietf-oauth-security-topics-15#section-2.1.2)
+([yes, really don't use it anymore](https://developer.okta.com/blog/2019/08/22/okta-authjs-pkce))
+and the standard flow with PKCE enabled
+[should be used instead](https://tools.ietf.org/html/draft-ietf-oauth-browser-based-apps-06#section-9.8)
+to make sure that authorization tokens are not leaked in redirection URLs, this
+should not matter too much.
+
+## Troubleshooting
+
+### General
+
+A number of tools exist that make debugging authentication with OAuth/OIDC
+easier.
+
+You can inspect the content of JSON Web Tokens on https://jwt.io. If you add the
+RS256 public key in the respective field (including the leading and trailing
+markers), it will also verify the signature for you.
+
+Another fantastic tool is https://oidcdebugger.com. This tool can request
+authorization codes for you, and can also make requests using the implicit flow.
+You will need to (temporarily) add the redirect URL to the allowed redirect URLs
+of your client.
+
+To check which mappers add claims to your tokens and which realm/client roles a
+certain user has, you can use the "Evaluate" tab under the "Client Scopes" tab
+of your client:
+
+![Evaluate client scopes in Keycloak](images/11_evaluate_client_scopes.png)
+
+### audience claim
+
+If you get the following error, the access token includes an _audience_ (_aud_)
+claim that Ontoserver does not accept.
+
+```
+{
+    "error": "access_denied",
+    "error_description": "Invalid token does not contain resource id (oauth2-resource)"
+}
+```
+
+If you take a look at the access token using a JSON Web Token inspection took,
+[for example using this token](https://jwt.io/#debugger-io?token=eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI0RHl3WkNUTkM1STN4RDNVN2Q3c21QcU4tdk5SR290bVA2aXd5b0w5Qzg0In0.eyJleHAiOjE2MDA2NzUwNzQsImlhdCI6MTYwMDY3NDE3NCwiYXV0aF90aW1lIjoxNjAwNjc0MTc0LCJqdGkiOiI2NzJiYWI1ZS1mYzhhLTQzMzEtYjg4Ni1jNTNmNzQ3NzQxNDEiLCJpc3MiOiJodHRwczovL2F0aGVuYS5sb2NhbC9hdXRoL3JlYWxtcy9vbnRvc2VydmVyIiwiYXVkIjoiYWNjb3VudCIsInN1YiI6IjNjYjcxMmE3LWYxZGQtNDk3Ny05ZThhLWQyMGQxNDFjOThmNCIsInR5cCI6IkJlYXJlciIsImF6cCI6Im9udG9zZXJ2ZXIiLCJub25jZSI6Imk0eWVjaXMzdWhiIiwic2Vzc2lvbl9zdGF0ZSI6ImY2YTI1OTA3LTk1NzUtNDM0Zi05M2U3LTZkOWFlMjhjMjczOSIsImFjciI6IjEiLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsic3lzdGVtLyoud3JpdGUiLCJvZmZsaW5lX2FjY2VzcyIsInVtYV9hdXRob3JpemF0aW9uIiwic3lzdGVtLyoucmVhZCJdfSwicmVzb3VyY2VfYWNjZXNzIjp7Im9udG9zZXJ2ZXIiOnsicm9sZXMiOlsiUk9MRV9BUElfUkVBRCIsIlJPTEVfU1lORF9SRUFEIiwiUk9MRV9BUElfV1JJVEUiLCJST0xFX1NZTkRfV1JJVEUiXX0sImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoib3BlbmlkIFNDT1BFX29udG8vc3luZC53cml0ZSBzeXN0ZW0vKi53cml0ZSBzeXN0ZW0vKi5yZWFkIFNDT1BFX29udG8vc3luZC5yZWFkIFNDT1BFX29udG8vYXBpLndyaXRlIFNDT1BFX29udG8vYXBpLnJlYWQiLCJhdXRob3JpdGllcyI6WyJST0xFX0FQSV9SRUFEIiwiUk9MRV9TWU5EX1JFQUQiLCJST0xFX0FQSV9XUklURSIsIlJPTEVfU1lORF9XUklURSJdfQ.kL8-5WUWxnrJrc1YKoqxW8JPR5UV6wZa-eVGwPjA925M1SfNt4_nOXdascAnYIDWCJBn1F2UxDvha01QZUOKclszZr4Esyd7wkQupQ9qRTKWWVpXMPuaf9ryQhWo_me1IUcaJnSeVk341d7A8_hcCUhOMcOZz0I-tguOELhSbRzjHflENVlyuCv62FhQ4x9GIcs08iV2_-9s_ej_6jPn9-pxRML3sQZDIAsLAA1W5oo3thMhjm3UVcp7_uyM_POrRzB1WApgVoEO7neh2kuu_iATY9P4CMO7oBBYru_P3i9IlFjD8yKWhqSlLh50KdXs1xqdppQqwrhR1-U6i9cXBg&publicKey=-----BEGIN%20PUBLIC%20KEY-----%0AMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA712ikArZ68CShXmIAWW2%0AL9oBGhtegm6H%2B9rvKfVb3kLMM6eH6ACNHFEIUcKHZCXp%2F8JPxRXEsETPsMNDLnuQ%0AE8%2F%2FppowFxvRmYQ1Y6EWwcLta6sXMEAYgao33qDVi3vf%2BzIsNWk97KtP49Bv%2FQOa%0AFJ6KKYWI%2B26nAd4ot6s7kBTi2y%2BNPpEwtgCmSiPb9u2kYtYZ9KcBtcdJwM9m21S0%0AuOnEuFTLmGaRYjOOwORu9CMKWEGzKcW7BT2hBstzDmemsgpqOysuKp6r%2FaYKHP41%0APB6bTVcq9d7BeNmBB6cYatu326j7Ynif85U8aUd%2Fv9BXlpYRg%2FO52LU5VhoIJUuy%0A%2FQIDAQAB%0A-----END%20PUBLIC%20KEY-----%0A),
+you will find a claim like this:
+
+```
+"aud": "account",
+```
+
+This is added when the `roles` default client scope is added to the client you
+are requesting tokens for. You can either remove the offending mapper in the
+`roles` client scope (first image) or remove the default client scope (second
+image).
+
+![Removing audience resolve mapper](images/10a_troubleshooting_audienceresolvemapper.png)
+![Removing roles client scope](images/10b_troubleshooting_roleclientscope.png)
+
+This claim is added to counteract impersonation across clients. As the
+[JWT specification states](https://tools.ietf.org/html/rfc7519#section-4.1.3),
+the client MUST tokens with reject unexpected audiences (if supplied, which is
+optional!), on the assumption that the credential was issued for another client
+and used maliciously. However, Ontoserver expects the audience `oauth-resource`.
+The easiest approach is thus to remove the offending claim. You could also
+enforce audience with
+[hard-coded audience](https://www.keycloak.org/docs/latest/server_admin/#_audience_hardcoded),
+if desired.
+
+### Cannot convert access token to JSON
+
+If you get the following error when sending requests with a token to Ontoserver,
+your RS256 token is not set correctly in `docker-compose.yml`. See
+[the section Ontoserver Configuration](https://github.com/LtSurgekopf/ontoserver-keycloak#ontoserver-configuration)
+for details.
+
+```
+{
+    "error": "invalid_token",
+    "error_description": "Cannot convert access token to JSON"
+}
+```
+
+## Change Log
+
+- 0.9.0: initial version

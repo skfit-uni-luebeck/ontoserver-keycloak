@@ -10,6 +10,18 @@
 			"item": [
 				{
 					"name": "upstream feed",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "19dc367d-919b-4c05-91fa-0a4955c7ebe5",
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "GET",
 						"header": [],
@@ -96,7 +108,7 @@
 				"oauth2": [
 					{
 						"key": "accessToken",
-						"value": "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJpaXUyQXJhbG9PampjR29mRmdpNEJ1dXFkTURGaXFOU09sN1FpM1RGXzJFIn0.eyJleHAiOjE1OTkxMzY4MTgsImlhdCI6MTU5OTEzNTkxOCwiYXV0aF90aW1lIjoxNTk5MTM1OTE4LCJqdGkiOiIxZjE5YTg5YS1mOWMyLTQ1ODctYWJjNC01YmNmM2Q4NmIzZjciLCJpc3MiOiJodHRwczovL2F0aGVuYS5sb2NhbC9hdXRoL3JlYWxtcy9vbnRvc2VydmVyIiwic3ViIjoiZGRjY2UxODQtYWVjNy00YjUyLWIwMDgtZjFjYTBjMzY4MDY2IiwidHlwIjoiQmVhcmVyIiwiYXpwIjoib250b3NlcnZlciIsIm5vbmNlIjoieGM0emNyaWdnZ28iLCJzZXNzaW9uX3N0YXRlIjoiZTczM2ZlMjgtNjYyNi00OTQwLTkxNDMtYjRhNTllZWVhM2JhIiwiYWNyIjoiMSIsInNjb3BlIjoib3BlbmlkIFNDT1BFX29udG8vc3luZC53cml0ZSBzeXN0ZW0vKi53cml0ZSBzeXN0ZW0vKi5yZWFkIFNDT1BFX29udG8vc3luZC5yZWFkIFNDT1BFX29udG8vYXBpLndyaXRlIFNDT1BFX29udG8vYXBpLnJlYWQiLCJhdXRob3JpdGllcyI6WyJST0xFX0FQSV9SRUFEIiwiUk9MRV9TWU5EX1JFQUQiLCJST0xFX0FQSV9XUklURSIsIlJPTEVfU1lORF9XUklURSJdfQ.MlSCjZrmVhZCCxxqxSzeHPF9827PR1x8nlsHIilGzxUkOiTcEmlifhOvC1EPoEolMo4lZxVTa82lLOIggVhYl__xQj7ZZZu_x37Lrb-tCqoasbe06C4sV0sWQRovst_kR7-zlPBQ1SC58k4wUA_Jjp-RIaVm6tZlGnkqcZqwfKB3JuEMlBGixJTLSql5JnMJkWbGTXGbx-FGNpxxHvn6RiOk70BpSkqTk6Ve6tsq2rLMNibjiBv4dHnZ5_saK6rJj09X2o2zKxClzPsxicMAgLVtAe70Iq3J38spDxv3XFK7CIeC05fCA2myE4E1uvNRN5zmXfjJIzQP5FKYZpZMsA",
+						"value": "{{token}}",
 						"type": "string"
 					},
 					{
@@ -128,7 +140,30 @@
 						"id": "fa1cbd6b-5241-4633-97d3-15afc26569c6",
 						"type": "text/javascript",
 						"exec": [
-							""
+							"pm.test(\"Status code not 401 or 403\", function () {",
+							"    pm.expect(pm.response.code).to.not.be.oneOf([401, 403]);",
+							"});",
+							"",
+							"var responseJson;",
+							"if (pm.response.text().startsWith(\"<?xml\")) {",
+							"    responseJson = xml2Json(pm.response.text());",
+							"} else {",
+							"    responseJson = pm.response.json();",
+							"}",
+							"",
+							"pm.test(\"No invalid token error\", function() {",
+							"    if (responseJson.error) {",
+							"        if (!responseJson.error_description.startsWith(\"Access token expired\"))",
+							"            pm.expect(responseJson.error).to.not.equal(\"invalid_token\", \"Check your public RS256 key in docker-compose.yml!\")",
+							"    }",
+							"});",
+							"",
+							"pm.test(\"No expired token\", function() {",
+							"    if (responseJson.error) {",
+							"        if (!responseJson.error_description.startsWith(\"Cannot convert access token\"))",
+							"            pm.expect(responseJson.error).to.not.equal(\"invalid_token\", \"The token is expired\")",
+							"    }",
+							"});"
 						]
 					}
 				}
@@ -137,6 +172,22 @@
 		},
 		{
 			"name": "fhir Metadata",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"id": "59fd465f-0970-40fc-a3bf-861f265111b3",
+						"exec": [
+							"pm.test(\"Conformance includes security\", function () {\r",
+							"    var jsonData = pm.response.json();\r",
+							"    console.log(jsonData.rest[0].security)\r",
+							"    pm.expect(jsonData.rest[0].security.extension[0]).to.be.not.null;\r",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
 			"request": {
 				"method": "GET",
 				"header": [],
