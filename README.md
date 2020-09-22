@@ -14,6 +14,10 @@ and detailed instructions on how to configure the different components. Due to
 this, paragraphs with actionable instructions are highlighted with "⚠" emoji,
 like this one. ⚠
 
+This article will be kept up-to-date as Ontoserver is being improved. To that
+end, it uses [Semantic Versioning](https://semver.org/). You can find a change
+log at the bottom of this page.
+
 > It is in part quite opinionated, and some opinions or statements may be wrong
 > or insecure, due to the author being new to all of this as well ;) If you spot
 > issues, please do get in touch via GitHub issues!
@@ -106,6 +110,11 @@ required.
 
 ## Understanding OpenID Connect & Further Reading
 
+> The following explanation is rather brief and high-level. A good starting
+> point for understanding OAuth 2.0 is
+> [this guide by Aaron Parecki](https://aaronparecki.com/oauth-2-simplified/).
+> Much information is also available from the linked RFCs and specifications.
+
 OAuth 2.0 is the protocol that powers authorization across the internet.
 Whenever you see a button "Sign-in with Google/Apple/GitHub", you are looking at
 OAuth 2.0. It is designed to be user-centric and browser-friendly. It is
@@ -172,9 +181,16 @@ browser extensions. Hence,
 **[you should NOT use this flow](https://developer.okta.com/blog/2019/08/22/okta-authjs-pkce)**.
 
 Instead, use the standard flow with the PKCE extension, specified in
-[RFC 7636](https://tools.ietf.org/html/rfc7636).
-
-<!-- TODO continue here -->
+[RFC 7636](https://tools.ietf.org/html/rfc7636). This extension, in combination
+with modern JavaScript APIs that allow redirection without reloading, allows the
+use of the much more secure standard flow, while making it much harder for MITM
+attacks to occur. PKCE relies on exchanging dynamic keys instead of a static
+client secret when requesting codes and tokens. More information is available in
+the RFC, the [OAuth documentation](https://oauth.net/2/pkce/) or e.g. in
+[Aaron Parecki's guide](https://aaronparecki.com/oauth-2-simplified/#mobile-apps)
+or
+[Auth0's](https://auth0.com/docs/flows/authorization-code-flow-with-proof-key-for-code-exchange-pkce)
+documentation.
 
 ## Keycloak Configuration
 
@@ -704,4 +720,7 @@ for details.
 
 ## Change Log
 
-- 0.9.0: initial version
+| Version | Date       | Changes                        |
+| ------- | ---------- | ------------------------------ |
+| 0.9.0   | 2020-09-21 | almost completed first version |
+| 0.9.1   | 2020-09-22 | first version for review       |
