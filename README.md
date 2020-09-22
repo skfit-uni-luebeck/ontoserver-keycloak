@@ -1,6 +1,26 @@
 # CSIRO Ontoserver ♥ Keycloak
 
-THIS ARTICLE IS WIP!
+- [CSIRO Ontoserver ♥ Keycloak](#csiro-ontoserver--keycloak)
+  - [Overview](#overview)
+  - [Getting Started](#getting-started)
+  - [Understanding OpenID Connect & Further Reading](#understanding-openid-connect--further-reading)
+  - [Keycloak Configuration](#keycloak-configuration)
+    - [Realm](#realm)
+    - [Client Creation](#client-creation)
+    - [Client Scopes](#client-scopes)
+    - [Roles](#roles)
+    - [Mappers](#mappers)
+    - [Groups](#groups)
+    - [Users](#users)
+    - [Optional further steps](#optional-further-steps)
+    - [Pre-fabricated Realm](#pre-fabricated-realm)
+  - [Ontoserver Configuration](#ontoserver-configuration)
+  - [Testing the infrastructure](#testing-the-infrastructure)
+  - [Troubleshooting](#troubleshooting)
+    - [General](#general)
+    - [audience claim](#audience-claim)
+    - [Cannot convert access token to JSON](#cannot-convert-access-token-to-json)
+  - [Change Log](#change-log)
 
 ## Overview
 
@@ -724,3 +744,4 @@ for details.
 | ------- | ---------- | ------------------------------ |
 | 0.9.0   | 2020-09-21 | almost completed first version |
 | 0.9.1   | 2020-09-22 | first version for review       |
+| 1.0.0   | 2020-09-23 | initial public release         |
