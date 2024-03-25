@@ -27,16 +27,12 @@
 This project demonstrates how to integrate CSIRO's
 [Ontoserver](https://ontoserver.csiro.au), a FHIR-based terminology server, with
 Red Hat's [Keycloak](https://keycloak.org), an OpenID Connect-compliant Identity
-and Access Management server.
+and Access Management server. It was written against an older version of Ontoserver and Keycloak and is now archived, as time constraints preclude the authors from updating it to the latest versions. The concepts and general setup should still be valid, but the specifics may have changed.
 
 ⚠ This article aims give a comprehensive introduction into the required concepts
 and detailed instructions on how to configure the different components. Due to
 this, paragraphs with actionable instructions are highlighted with "⚠" emoji,
 like this one. ⚠
-
-This article will be kept up-to-date as Ontoserver is being improved. To that
-end, it uses [Semantic Versioning](https://semver.org/). You can find a change
-log at the bottom of this page.
 
 > It is in part quite opinionated, and some opinions or statements may be wrong
 > or insecure, due to the author being new to all of this as well ;) If you spot
@@ -737,11 +733,3 @@ for details.
     "error_description": "Cannot convert access token to JSON"
 }
 ```
-
-## Change Log
-
-| Version | Date       | Changes                        |
-| ------- | ---------- | ------------------------------ |
-| 0.9.0   | 2020-09-21 | almost completed first version |
-| 0.9.1   | 2020-09-22 | first version for review       |
-| 1.0.0   | 2020-09-23 | initial public release         |
